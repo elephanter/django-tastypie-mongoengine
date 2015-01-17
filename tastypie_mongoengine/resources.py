@@ -362,74 +362,7 @@ class MongoEngineResource(resources.ModelResource):
         else:
             return None
 
-    def _wrap_polymorphic(self, resource, fun):
-        object_class = self._meta.object_class
-        qs = self._meta.queryset
-        resource_name = self._meta.resource_name
-        base_fields = self.base_fields
-        fields = self.fields
-        try:
-            self._meta.object_class = resource._meta.object_class
-            self._meta.queryset = resource._meta.queryset
-            self.base_fields = resource.base_fields.copy()
-            self.fields = resource.fields.copy()
-            if getattr(self._meta, 'prefer_polymorphic_resource_uri', False):
-                if resource.get_resource_uri():
-                    self._meta.resource_name = resource._meta.resource_name
-            if getattr(self._meta, 'include_resource_type', True):
-                self.base_fields['resource_type'] = base_fields['resource_type']
-                self.fields['resource_type'] = fields['resource_type']
-            return fun()
-        finally:
-            self._meta.object_class = object_class
-            self._meta.queryset = qs
-            self._meta.resource_name = resource_name
-            self.base_fields = base_fields
-            self.fields = fields
-
-    def _wrap_request(self, request, fun):
-        type_map = getattr(self._meta, 'polymorphic', {})
-        if not type_map:
-            return fun()
-
-        object_type = self._get_object_type(request)
-        if not object_type:
-            # Polymorphic resources are enabled, but
-            # nothing is passed, so set it to a default
-            try:
-                object_type = self._get_type_from_class(type_map, self._meta.object_class)
-            except KeyError:
-                raise tastypie_exceptions.BadRequest("Invalid object type.")
-
-        if object_type not in type_map:
-            raise tastypie_exceptions.BadRequest("Invalid object type.")
-
-        resource = type_map[object_type](self._meta.api_name)
-
-        # Optimization
-        if resource._meta.object_class is self._meta.object_class:
-            return fun()
-
-        return self._wrap_polymorphic(resource, fun)
-
-    def dispatch(self, request_type, request, **kwargs):
-        # We process specially only requests with payload
-        if 'HTTP_X_HTTP_METHOD_OVERRIDE' in request.META:
-            the_method = request.META['HTTP_X_HTTP_METHOD_OVERRIDE'].lower()
-            if the_method == 'delete':
-                return super(MongoEngineResource, self).dispatch(request_type, request, **kwargs)
-        else:
-            the_method = request.method.lower()
-
-        if not request.body:
-            assert the_method not in ('put', 'post', 'patch'), the_method
-            return super(MongoEngineResource, self).dispatch(request_type, request, **kwargs)
-
-        assert the_method in ('put', 'post', 'patch'), the_method + ":" + request.body
-
-        return self._wrap_request(request, lambda: super(MongoEngineResource, self).dispatch(request_type, request, **kwargs))
-
-    def get_schema(self, request, **kwargs):
+     def get_schema(self, request, **kwargs):
         return self._wrap_request(request, lambda: super(MongoEngineResource, self).get_schema(request, **kwargs))
 
     def _get_resource_from_class(self, type_map, cls):
@@ -460,18 +393,6 @@ class MongoEngineResource(resources.ModelResource):
             return None
 
         return self._get_type_from_class(type_map, bundle.obj.__class__)
-
-    def full_dehydrate(self, bundle, for_list=False):
-        type_map = getattr(self._meta, 'polymorphic', {})
-        if not type_map:
-            return super(MongoEngineResource, self).full_dehydrate(bundle, for_list)
-
-        # Optimization
-        if self._meta.object_class is bundle.obj.__class__:
-            return super(MongoEngineResource, self).full_dehydrate(bundle, for_list)
-
-        resource = self._get_resource_from_class(type_map, bundle.obj.__class__)(self._meta.api_name)
-        return self._wrap_polymorphic(resource, lambda: super(MongoEngineResource, self).full_dehydrate(bundle, for_list))
 
     def full_hydrate(self, bundle):
         # When updating objects, we want to force only updates of the same type, and object

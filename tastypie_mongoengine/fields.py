@@ -34,10 +34,15 @@ class GetRelatedMixin(object):
     def get_related_resource(self, related_instance):
         related_resource = super(GetRelatedMixin, self).get_related_resource(related_instance)
         type_map = getattr(related_resource._meta, 'polymorphic', {})
-        if type_map and getattr(related_resource._meta, 'prefer_polymorphic_resource_uri', False):
-            resource = related_resource._get_resource_from_class(type_map, related_instance.__class__)
-            if related_resource.get_resource_uri():
-                related_resource._meta.resource_name = resource._meta.resource_name
+        if type_map:
+            #replace related_resource with new class if necessary
+            related_resource = related_resource._get_resource_from_class(type_map, related_instance.__class__)(self.get_api_name())
+            #same as in tastypie method
+            related_resource.instance = related_instance
+            if getattr(related_resource._meta, 'prefer_polymorphic_resource_uri', False):
+                resource = related_resource._get_resource_from_class(type_map, related_instance.__class__)
+                if related_resource.get_resource_uri():
+                    related_resource._meta.resource_name = resource._meta.resource_name
         return related_resource
 
 
@@ -49,11 +54,18 @@ class BuildRelatedMixin(TastypieMongoengineMixin):
     def build_related_resource(self, value, **kwargs):
         # A version of build_related_resource which allows only dictionary-like data
         if hasattr(value, 'items'):
-            self.fk_resource = self.to_class(self.get_api_name())
+            fk_resource = self.to_class(self.get_api_name())
+
+            #if field points to polymorphic resource
+            #replace fk_resource with new resource object here
+            type_map = getattr(fk_resource._meta, 'polymorphic', None)
+            rel_fld_name = getattr(fk_resource._meta, 'rel_fld_name', 'resource_type')
+            if type_map and rel_fld_name in value and value[rel_fld_name] in type_map:
+                fk_resource = type_map[value[rel_fld_name]](self.get_api_name())
             # We force resource to cannot be updated so that
             # it is just constructed by resource_from_data
-            self.fk_resource.can_update = lambda: False
-            return self.resource_from_data(self.fk_resource, value, **kwargs)
+            fk_resource.can_update = lambda: False
+            return self.resource_from_data(fk_resource, value, **kwargs)
         # Or if related object already exists (this happens with PATCH request)
         elif getattr(value, 'obj', None):
             return value
