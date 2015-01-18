@@ -362,7 +362,7 @@ class MongoEngineResource(resources.ModelResource):
         else:
             return None
 
-     def get_schema(self, request, **kwargs):
+    def get_schema(self, request, **kwargs):
         return self._wrap_request(request, lambda: super(MongoEngineResource, self).get_schema(request, **kwargs))
 
     def _get_resource_from_class(self, type_map, cls):
