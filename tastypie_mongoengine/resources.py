@@ -46,10 +46,8 @@ if not hasattr(queryset.QuerySet, 'query'):
 
 CONTENT_TYPE_RE = re.compile(r'.*; type=([\w\d-]+);?')
 
-
 class NOT_HYDRATED(object):
     pass
-
 
 class ListQuerySet(datastructures.SortedDict):
     # Workaround for https://github.com/toastdriven/django-tastypie/pull/670
@@ -184,6 +182,7 @@ class MongoEngineModelDeclarativeMetaclass(resources.ModelDeclarativeMetaclass):
     """
 
     def __new__(cls, name, bases, attrs):
+        #print name
         meta = attrs.get('Meta')
 
         if meta:
@@ -232,11 +231,11 @@ class MongoEngineModelDeclarativeMetaclass(resources.ModelDeclarativeMetaclass):
 
         type_map = getattr(new_class._meta, 'polymorphic', {})
 
-        if type_map and getattr(new_class._meta, 'include_resource_type', True):
-            if 'resource_type' not in new_class.base_fields:
-                new_class.base_fields['resource_type'] = tastypie_fields.CharField(readonly=True)
-        elif 'resource_type' in new_class.base_fields and 'resource_type' not in attrs:
-            del(new_class.base_fields['resource_type'])
+        # if type_map and getattr(new_class._meta, 'include_resource_type', True):
+        #     if "resource_type" not in new_class.base_fields:
+        #         new_class.base_fields["resource_type"] = tastypie_fields.CharField(readonly=True)
+        # elif "resource_type" in new_class.base_fields and "resource_type" not in attrs:
+        #     del(new_class.base_fields["resource_type"])
 
         seen_types = set()
         for typ, resource in type_map.iteritems():
@@ -387,12 +386,12 @@ class MongoEngineResource(resources.ModelResource):
         else:
             raise KeyError(cls)
 
-    def dehydrate_resource_type(self, bundle):
-        type_map = getattr(self._meta, 'polymorphic', {})
-        if not type_map:
-            return None
+    # def dehydrate_resource_type(self, bundle):
+    #     type_map = getattr(self._meta, 'polymorphic', {})
+    #     if not type_map:
+    #         return None
 
-        return self._get_type_from_class(type_map, bundle.obj.__class__)
+    #     return self._get_type_from_class(type_map, bundle.obj.__class__)
 
     def full_hydrate(self, bundle):
         # When updating objects, we want to force only updates of the same type, and object
