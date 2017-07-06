@@ -466,8 +466,8 @@ class MongoEngineResource(resources.ModelResource):
                         field_type = field_type[:-5]
                     data['fields'][field_name]['content']['type'] = field_type
 
-                    if field_object.field.__doc__:
-                        data['fields'][field_name]['content']['help_text'] = trim(field_object.field.__doc__)
+                    #if field_object.field.__doc__:
+                    #    data['fields'][field_name]['content']['help_text'] = trim(field_object.field.__doc__)
 
             if hasattr(field_object, 'build_schema'):
                 data['fields'][field_name].update(field_object.build_schema())
@@ -642,7 +642,7 @@ class MongoEngineResource(resources.ModelResource):
                 'attribute': name,
                 'unique': f.unique or primary_key,
                 'null': not f.required and not primary_key,
-                'help_text': f.help_text,
+                #'help_text': f.help_text,
             }
 
             # If field is not required, it does not matter if set default value,
