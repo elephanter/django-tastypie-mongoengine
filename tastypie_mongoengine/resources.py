@@ -5,7 +5,7 @@ import sys
 from django.conf import urls
 from django.core import exceptions, urlresolvers
 from django.db.models import base as models_base
-from django.utils import datastructures
+from collections import OrderedDict
 
 try:
     # Django 1.5+
@@ -49,7 +49,7 @@ CONTENT_TYPE_RE = re.compile(r'.*; type=([\w\d-]+);?')
 class NOT_HYDRATED(object):
     pass
 
-class ListQuerySet(datastructures.SortedDict):
+class ListQuerySet(OrderedDict):
     # Workaround for https://github.com/toastdriven/django-tastypie/pull/670
     query = Query()
 
