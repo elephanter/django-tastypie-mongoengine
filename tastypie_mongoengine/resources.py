@@ -5,7 +5,8 @@ import sys
 from django.conf import urls
 from django.core import exceptions, urlresolvers
 from django.db.models import base as models_base
-from django.utils import datastructures
+#from django.utils import datastructures
+from collections import OrderedDict
 
 try:
     # Django 1.5+
@@ -49,7 +50,7 @@ CONTENT_TYPE_RE = re.compile(r'.*; type=([\w\d-]+);?')
 class NOT_HYDRATED(object):
     pass
 
-class ListQuerySet(datastructures.SortedDict):
+class ListQuerySet(OrderedDict):
     # Workaround for https://github.com/toastdriven/django-tastypie/pull/670
     query = Query()
 
@@ -215,7 +216,7 @@ class MongoEngineModelDeclarativeMetaclass(resources.ModelDeclarativeMetaclass):
                     del(new_class.base_fields[field_name])
             if field_name in new_class.declared_fields:
                 continue
-            if len(include_fields) and field_name not in include_fields:
+            if include_fields and len(include_fields) and field_name not in include_fields:
                 del(new_class.base_fields[field_name])
             if len(excludes) and field_name in excludes:
                 del(new_class.base_fields[field_name])
