@@ -1,9 +1,10 @@
+from six import with_metaclass
 import itertools
 import re
 import sys
 
 from django.conf import urls
-from django.core import exceptions, urlresolvers
+from django.core import exceptions
 from django.db.models import base as models_base
 #from django.utils import datastructures
 from collections import OrderedDict
@@ -27,7 +28,7 @@ except ImportError:
 from tastypie_mongoengine import fields as tastypie_mongoengine_fields
 
 from tastypie.exceptions import NotFound
-from django.core.urlresolvers import Resolver404
+from django.urls import Resolver404
 
 
 # When Tastypie accesses query terms used by QuerySet it assumes the interface of Django ORM.
@@ -75,7 +76,7 @@ class ListQuerySet(OrderedDict):
             elif pk is not None:
                 result = ListQuerySet()
 
-        for field, value in kwargs.iteritems():
+        for field, value in kwargs.items():
             value = self._process_filter_value(value)
             if constants.LOOKUP_SEP in field:
                 raise tastypie_exceptions.InvalidFilterError("Unsupported filter: (%s, %s)" % (field, value))
@@ -204,7 +205,7 @@ class MongoEngineModelDeclarativeMetaclass(resources.ModelDeclarativeMetaclass):
 
         field_names = new_class.base_fields.keys()
 
-        for field_name in field_names:
+        for field_name in list(field_names):
             if field_name == 'resource_uri':
                 if hasattr(new_class, '_parent'):
                     if new_class._parent._meta.object_class and issubclass(new_class._parent._meta.object_class, mongoengine.EmbeddedDocument):
@@ -239,7 +240,7 @@ class MongoEngineModelDeclarativeMetaclass(resources.ModelDeclarativeMetaclass):
         #     del(new_class.base_fields["resource_type"])
 
         seen_types = set()
-        for typ, resource in type_map.iteritems():
+        for typ, resource in type_map.items():
             if resource == 'self':
                 type_map[typ] = new_class
                 break
@@ -268,12 +269,12 @@ class MongoEngineModelDeclarativeMetaclass(resources.ModelDeclarativeMetaclass):
         return new_class
 
 
-class MongoEngineResource(resources.ModelResource):
+class MongoEngineResource(with_metaclass(MongoEngineModelDeclarativeMetaclass, resources.ModelResource)):
     """
     Adaptation of ``ModelResource`` to MongoEngine.
     """
 
-    __metaclass__ = MongoEngineModelDeclarativeMetaclass
+    #__metaclass__ = MongoEngineModelDeclarativeMetaclass
 
     def get_via_uri(self, uri, request=None):
         """
@@ -290,14 +291,14 @@ class MongoEngineResource(resources.ModelResource):
         except (NotFound, Resolver404):
             # if this is a polymorphic resource check the uri against the resources in self._meta.polymorphic
             type_map = getattr(self._meta, 'polymorphic', {})
-            for type_, resource in type_map.iteritems():
+            for type_, resource in type_map.items():
                 try:
                     return resource().get_via_uri(uri, request)
                 except (NotFound, Resolver404):
                     pass
             # the uri wasn't found at any of the polymorphic resources, it is an incorrect URI for this resource
             raise
-        except Exception, e:
+        except Exception as e:
             raise e
 
     # Data preparation.
@@ -311,7 +312,7 @@ class MongoEngineResource(resources.ModelResource):
         base = super(MongoEngineResource, self).base_urls()
 
         embedded_urls = []
-        embedded = (name for name, obj in self.fields.iteritems() if isinstance(obj, tastypie_mongoengine_fields.EmbeddedListField))
+        embedded = (name for name, obj in self.fields.items() if isinstance(obj, tastypie_mongoengine_fields.EmbeddedListField))
 
         for name in embedded:
             embedded_urls.extend((
@@ -376,7 +377,7 @@ class MongoEngineResource(resources.ModelResource):
         # that we do not miss real match, so if self._meta.object_class
         # matches, we still check other items, otherwise we return immediately
         res = None
-        for typ, resource in type_map.iteritems():
+        for typ, resource in type_map.items():
             if resource._meta.object_class is cls:
                 if resource._meta.object_class is self._meta.object_class:
                     res = typ
@@ -618,7 +619,7 @@ class MongoEngineResource(resources.ModelResource):
         if not cls._meta.object_class:
             return final_fields
 
-        for name, f in cls._meta.object_class._fields.iteritems():
+        for name, f in cls._meta.object_class._fields.items():
             # If the field name is already present, skip
             if name in cls.base_fields:
                 continue
@@ -711,7 +712,7 @@ class MongoEngineListResource(MongoEngineResource):
         self.parent = self._parent(api_name)
 
         # Validate the fields and set primary key if needed
-        for field_name, field in self._meta.object_class._fields.iteritems():
+        for field_name, field in self._meta.object_class._fields.items():
             if field.primary_key:
                 # Ensure only one primary key is set
                 current_pk = getattr(self._meta, 'id_field', None)
@@ -895,5 +896,5 @@ class MongoEngineListResource(MongoEngineResource):
 
         try:
             return self._build_reverse_url(url_name, kwargs=self.resource_uri_kwargs(bundle_or_obj))
-        except urlresolvers.NoReverseMatch:
+        except django.urls.NoReverseMatch:
             return ''
