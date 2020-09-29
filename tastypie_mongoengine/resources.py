@@ -70,9 +70,9 @@ class ListQuerySet(OrderedDict):
 
         # pk optimization
         if 'pk' in kwargs:
-            pk = unicode(self._process_filter_value(kwargs.pop('pk')))
+            pk = str(self._process_filter_value(kwargs.pop('pk')))
             if pk in result:
-                result = ListQuerySet([(unicode(pk), result[pk])])
+                result = ListQuerySet([(str(pk), result[pk])])
             # Sometimes None is passed as a pk to not filter by pk
             elif pk is not None:
                 result = ListQuerySet()
@@ -83,7 +83,7 @@ class ListQuerySet(OrderedDict):
                 raise tastypie_exceptions.InvalidFilterError("Unsupported filter: (%s, %s)" % (field, value))
 
             try:
-                result = ListQuerySet([(unicode(obj.pk), obj) for obj in result.values() if getattr(obj, field) == value])
+                result = ListQuerySet([(str(obj.pk), obj) for obj in result.values() if getattr(obj, field) == value])
             except AttributeError as ex:
                 raise tastypie_exceptions.InvalidFilterError(ex)
 
@@ -121,7 +121,7 @@ class ListQuerySet(OrderedDict):
                 reverse = False
 
             try:
-                result = [(unicode(obj.pk), obj) for obj in sorted(result, key=self.attrgetter(field), reverse=reverse)]
+                result = [(str(obj.pk), obj) for obj in sorted(result, key=self.attrgetter(field), reverse=reverse)]
             except (AttributeError, IndexError) as ex:
                 raise tastypie_exceptions.InvalidSortError(ex)
 
@@ -138,7 +138,7 @@ class ListQuerySet(OrderedDict):
         # Tastypie access object_list[0], so we pretend to be
         # a list here (order is same as our iteration order)
         if isinstance(key, (int, long)):
-            return itertools.islice(self, key, key + 1).next()
+            return next(itertools.islice(self, key, key + 1))
         # Tastypie also access sliced object_list in paginator
         elif isinstance(key, slice):
             return itertools.islice(self, key.start, key.stop, key.step)
@@ -534,7 +534,7 @@ class MongoEngineResource(with_metaclass(MongoEngineModelDeclarativeMetaclass, r
             raise tastypie_exceptions.NotFound("A document instance matching the provided arguments could not be found.")
 
     def create_identifier(self, obj):
-        return unicode(obj.pk)
+        return str(obj.pk)
 
     def save(self, bundle, skip_errors=False):
         try:
@@ -765,7 +765,7 @@ class MongoEngineListResource(MongoEngineResource):
             for obj in getattr(self.instance, self.attribute):
                 pk = getattr(obj, pk_field)
                 obj.__class__.pk = tastypie_mongoengine_fields.link_property(pk_field)
-                object_list.append((unicode(pk), obj))
+                object_list.append((str(pk), obj))
             return ListQuerySet(object_list)
 
         else:
@@ -773,7 +773,7 @@ class MongoEngineListResource(MongoEngineResource):
                 obj.pk = index
                 return obj
 
-            return ListQuerySet([(unicode(index), add_index(index, obj)) for index, obj in enumerate(getattr(self.instance, self.attribute))])
+            return ListQuerySet([(str(index), add_index(index, obj)) for index, obj in enumerate(getattr(self.instance, self.attribute))])
 
     def obj_create(self, bundle, **kwargs):
         try:
