@@ -2,6 +2,7 @@ from six import with_metaclass
 import itertools
 import re
 import sys
+import django
 
 from django.conf import urls
 from django.core import exceptions
@@ -82,7 +83,7 @@ class ListQuerySet(OrderedDict):
                 raise tastypie_exceptions.InvalidFilterError("Unsupported filter: (%s, %s)" % (field, value))
 
             try:
-                result = ListQuerySet([(unicode(obj.pk), obj) for obj in result.itervalues() if getattr(obj, field) == value])
+                result = ListQuerySet([(unicode(obj.pk), obj) for obj in result.values() if getattr(obj, field) == value])
             except AttributeError as ex:
                 raise tastypie_exceptions.InvalidFilterError(ex)
 
@@ -127,7 +128,7 @@ class ListQuerySet(OrderedDict):
         return ListQuerySet(result)
 
     def __iter__(self):
-        return self.itervalues()
+        return self.values()
 
     def __reversed__(self):
         for key in reversed(self.keyOrder):
@@ -367,7 +368,7 @@ class MongoEngineResource(with_metaclass(MongoEngineModelDeclarativeMetaclass, r
         return self._wrap_request(request, lambda: super(MongoEngineResource, self).get_schema(request, **kwargs))
 
     def _get_resource_from_class(self, type_map, cls):
-        for resource in type_map.itervalues():
+        for resource in type_map.values():
             if resource._meta.object_class is cls:
                 return resource
         raise KeyError(cls)
@@ -407,7 +408,7 @@ class MongoEngineResource(with_metaclass(MongoEngineModelDeclarativeMetaclass, r
         # We redo check for required fields as Tastypie is not
         # reliable as it does checks in an inconsistent way
         # (https://github.com/toastdriven/django-tastypie/issues/491)
-        for field_object in self.fields.itervalues():
+        for field_object in self.fields.values():
             if field_object.readonly or getattr(field_object, '_primary_key', False):
                 continue
 
